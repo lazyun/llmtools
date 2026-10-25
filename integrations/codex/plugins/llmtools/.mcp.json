@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "llmtools": {
+      "command": "./scripts/launch-ai-worker-mcp",
+      "enabled": false,
+      "startup_timeout_sec": 10,
+      "tool_timeout_sec": 3615,
+      "default_tools_approval_mode": "prompt",
+      "env_vars": [
+        "HOME",
+        "PATH",
+        "LLMTOOLS_MCP_BINARY",
+        "LLMTOOLS_CONFIG_DIR"
+      ]
+    }
+  }
+}

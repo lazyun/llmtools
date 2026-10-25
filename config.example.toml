@@ -1,0 +1,39 @@
+[general]
+log_level = "info"
+task_timeout_seconds = 180
+max_context_bytes = 1048576
+
+[runtime]
+type = "pi"
+binary = "pi" # An absolute path is recommended for Desktop.
+session_dir = "/absolute/path/to/pi-sessions" # Durable Pi history; choose an existing parent directory.
+# Pi starts automatically for each task. No server endpoint or port is needed.
+# Configure providers and credentials through Pi itself.
+
+[agents.implementation]
+exposed = true
+agent = "" # Pi has no named agent selector.
+model = "" # Select a provider/model ID from Desktop's Pi model catalogue.
+
+# Complete project implementation and tests, with final acceptance by Codex.
+[agents.developer]
+exposed = false
+agent = ""
+model = ""
+
+[agents.review]
+exposed = true
+agent = ""
+model = ""
+
+[agents.research]
+exposed = false
+agent = ""
+model = ""
+
+[storage]
+database = "llmtools.db"
+
+# Authorize a project in Desktop Settings, or with ai_worker_add_workspace.
+# Developer, Implementation and Review require an authorized workspace.
+# Revocation immediately removes access for existing and new tasks.

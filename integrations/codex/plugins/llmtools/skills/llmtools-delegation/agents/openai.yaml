@@ -1,0 +1,10 @@
+{
+  "interface": {
+    "display_name": "llmTools Delegation",
+    "short_description": "Use configured external roles for bounded engineering work",
+    "default_prompt": "Use the llmTools delegation workflow for this task while retaining parent decisions and final acceptance."
+  },
+  "policy": {
+    "allow_implicit_invocation": true
+  }
+}

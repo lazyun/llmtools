@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+
+binary="${LLMTOOLS_MCP_BINARY:-}"
+if [ -z "$binary" ] && command -v ai-worker-mcp >/dev/null 2>&1; then
+  binary="$(command -v ai-worker-mcp)"
+fi
+if [ -z "$binary" ] && [ -x "/Applications/AI Worker.app/Contents/MacOS/ai-worker-mcp" ]; then
+  binary="/Applications/AI Worker.app/Contents/MacOS/ai-worker-mcp"
+fi
+if [ -z "$binary" ] && [ -x "$HOME/Applications/AI Worker.app/Contents/MacOS/ai-worker-mcp" ]; then
+  binary="$HOME/Applications/AI Worker.app/Contents/MacOS/ai-worker-mcp"
+fi
+if [ -z "$binary" ]; then
+  echo "RUNTIME_NOT_FOUND: install AI Worker or set LLMTOOLS_MCP_BINARY" >&2
+  exit 2
+fi
+
+config_dir="${LLMTOOLS_CONFIG_DIR:-$HOME/Library/Application Support/AI Worker}"
+exec "$binary" --config-dir "$config_dir"

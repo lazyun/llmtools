@@ -1,0 +1,25 @@
+{
+  "name": "llmtools",
+  "version": "1.4.0",
+  "description": "Delegation workflow and local MCP integration for llmTools external worker roles.",
+  "author": {
+    "name": "llmTools"
+  },
+  "license": "MIT",
+  "keywords": ["delegation", "mcp", "pi", "workers"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "llmTools",
+    "shortDescription": "Delegate bounded work to configured external roles.",
+    "longDescription": "Adds the llmTools delegation workflow and a local MCP server definition. Codex keeps parent decisions and final acceptance while Pi executes configured external roles.",
+    "developerName": "llmTools",
+    "category": "Developer Tools",
+    "capabilities": ["Local MCP", "Delegation"],
+    "defaultPrompt": [
+      "Implement this bounded engineering task and retain final review.",
+      "Get an independent review of this change.",
+      "Investigate this technical question with an external role."
+    ]
+  },
+  "mcpServers": "./.mcp.json"
+}

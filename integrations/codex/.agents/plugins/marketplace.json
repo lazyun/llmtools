@@ -1,0 +1,20 @@
+{
+  "name": "llmtools-local",
+  "interface": {
+    "displayName": "llmTools Local"
+  },
+  "plugins": [
+    {
+      "name": "llmtools",
+      "source": {
+        "source": "local",
+        "path": "./plugins/llmtools"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}
