@@ -1,0 +1,181 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CGO_ENABLED: '1'
+
+jobs:
+  quality-macos:
+    name: Quality (macOS)
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Check out (no credential persistence)
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Go 1.26.x
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.26.x'
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            desktop/go.sum
+
+      - name: Set up Node 22.x
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22.x'
+          cache: npm
+          cache-dependency-path: desktop/frontend/package-lock.json
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+
+      - name: Vet root module
+        run: go vet ./...
+
+      - name: Test root module (race)
+        # -p 2 keeps runner load bounded; macOS runners have limited cores.
+        run: go test -race -p 2 ./...
+
+      - name: Python script tests
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
+
+      - name: Codex plugin check
+        run: python3 scripts/validate_codex_plugin.py
+
+      - name: Frontend install
+        run: npm --prefix desktop/frontend ci
+
+      - name: Frontend build
+        run: npm --prefix desktop/frontend run build
+
+      - name: Frontend tests
+        run: npm --prefix desktop/frontend test
+
+      - name: Vet desktop module
+        working-directory: desktop
+        env:
+          CGO_LDFLAGS: '-framework UniformTypeIdentifiers'
+        run: go vet ./...
+
+      - name: Test desktop module
+        # Wails desktop tests need macOS frameworks (UniformTypeIdentifiers)
+        # and the frontend dist produced by the build step above.
+        working-directory: desktop
+        env:
+          CGO_LDFLAGS: '-framework UniformTypeIdentifiers'
+        run: go test ./...
+
+  build-desktop:
+    name: Build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            label: macos
+            script: scripts/build-macos.sh
+            archive: desktop-macos-arm64.tar.gz
+          - os: ubuntu-24.04
+            label: linux
+            script: scripts/build-linux.sh
+            archive: desktop-linux-amd64.tar.gz
+          - os: windows-2022
+            label: windows
+            script: scripts/build-windows.sh
+            archive: desktop-windows-amd64.zip
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out (no credential persistence)
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Go 1.26.x
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.26.x'
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            desktop/go.sum
+
+      - name: Set up Node 22.x
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22.x'
+          cache: npm
+          cache-dependency-path: desktop/frontend/package-lock.json
+
+      - name: Install Linux desktop build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Put MinGW64 GCC on PATH (Windows)
+        # The runner image ships MinGW64; WSL is intentionally not used.
+        if: runner.os == 'Windows'
+        run: printf '%s\n' 'C:\mingw64\bin' >> "$GITHUB_PATH"
+
+      - name: Report Windows toolchain
+        if: runner.os == 'Windows'
+        run: |
+          command -v go gcc
+          go env GOHOSTOS
+          gcc --version | head -1
+
+      - name: Install Wails CLI v2.10.2
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.2
+
+      - name: Run native build script
+        run: bash ${{ matrix.script }}
+
+      - name: Archive build output (macOS/Linux)
+        if: runner.os != 'Windows'
+        # tar preserves executable bits and the app bundle's ad-hoc signature.
+        run: |
+          dist_dirs=(dist/${{ matrix.label }}-*)
+          test "${#dist_dirs[@]}" -eq 1 && test -d "${dist_dirs[0]}"
+          cp LICENSE "${dist_dirs[0]}/LICENSE"
+          tar -czf "${{ matrix.archive }}" -C "${dist_dirs[0]}" .
+
+      - name: Archive build output (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          dist_dirs=(dist/${{ matrix.label }}-*)
+          test "${#dist_dirs[@]}" -eq 1 && test -d "${dist_dirs[0]}"
+          cp LICENSE "${dist_dirs[0]}/LICENSE"
+          powershell -NoProfile -Command "\$ErrorActionPreference = 'Stop'; Compress-Archive -Path '$(cygpath -w "${dist_dirs[0]}")\*' -DestinationPath '${{ matrix.archive }}' -Force"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ matrix.label }}-desktop-build
+          path: ${{ matrix.archive }}
+          retention-days: 7
+          compression-level: 0
+          if-no-files-found: error

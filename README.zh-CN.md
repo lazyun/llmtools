@@ -165,6 +165,16 @@ codex plugin add llmtools@llmtools-local
 
 请只保留一份指向实际运行二进制的 MCP 注册。插件启动器接受 `LLMTOOLS_MCP_BINARY` 和 `LLMTOOLS_CONFIG_DIR`，不会安装 Pi 服务商或选择模型。
 
+## 持续集成
+
+[GitHub Actions CI](https://github.com/lazyun/llmtools/actions/workflows/ci.yml) 在推送到 `main`、所有 Pull Request 和手动触发时运行，使用 Go 1.26.x、Node.js 22.x 和 Python 3.13。
+
+- **质量检查（macOS 15）：** MCP 模块的 Go vet 和竞态测试、Python 脚本测试、Codex 插件校验、前端构建与测试，以及桌面端模块的 vet 和测试。macOS runner 同时覆盖 Developer 命令沙箱。测试使用本地测试替身，无需安装 Pi、配置服务商凭据或调用真实模型。
+- **原生构建：** macOS 15、Ubuntu 24.04 和 Windows Server 2022 调用现有平台脚本，并启用 CGO。Linux 安装 GTK 3 / WebKitGTK 4.1，Windows 在 Git Bash 中使用原生 Go 和 MinGW GCC。目前 Linux / Windows 验证编译与打包，完整测试套件在 macOS 上执行。
+- **下载构建产物：** 构建成功后，可在该次运行的 **Artifacts** 区域下载 `macos-desktop-build`、`linux-desktop-build` 或 `windows-desktop-build`。其中包含 `.tar.gz`（macOS / Linux）或 `.zip`（Windows）归档，内含应用、MCP 和 MIT 许可证。Tar 归档保留可执行权限及 macOS 应用包签名。产物保留 7 天，CI 不会自动发布 Release。
+
+工作流只读访问仓库，Actions 固定到已核对的提交 SHA，同一 ref 的新运行会取消旧运行，并基于两份 Go 模块校验文件和前端锁文件缓存 Go / npm 依赖。配置见 [ci.yml](.github/workflows/ci.yml)。
+
 ## 编译与验证
 
 请在目标操作系统上运行对应脚本。完整构建会重新生成 Wails 绑定、构建前端、**启用 CGO** 编译使用 SQLite 的 MCP、构建桌面应用，并将两者一起打包。脚本会自行定位仓库，因此也可以从其他目录调用。

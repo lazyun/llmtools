@@ -165,6 +165,16 @@ codex plugin add llmtools@llmtools-local
 
 Choose one MCP registration for the running binary. The plugin launcher accepts `LLMTOOLS_MCP_BINARY` and `LLMTOOLS_CONFIG_DIR`; it does not install a Pi provider or select a model.
 
+## Continuous integration
+
+[GitHub Actions CI](https://github.com/lazyun/llmtools/actions/workflows/ci.yml) runs on pushes to `main`, every pull request, and manual dispatch. It uses Go 1.26.x, Node.js 22.x and Python 3.13.
+
+- **Quality (macOS 15):** Go vet and race tests for the MCP module, Python script tests, Codex plugin validation, frontend build/tests, and vet/tests for the desktop module. The macOS runner covers the Developer command sandbox. Tests use local fixtures; no Pi installation, provider credentials or real model calls are needed.
+- **Native builds:** macOS 15, Ubuntu 24.04 and Windows Server 2022 invoke the existing platform scripts with CGO enabled. Linux installs GTK 3 / WebKitGTK 4.1; Windows uses native Go and MinGW GCC in Git Bash. Linux/Windows currently validate compilation and packaging; the complete test suite runs on macOS.
+- **Downloadable artifacts:** after a build succeeds, download `macos-desktop-build`, `linux-desktop-build` or `windows-desktop-build` from the run's **Artifacts** section. They contain a `.tar.gz` (macOS/Linux) or `.zip` (Windows) archive with the application, MCP and MIT license. Tar archives preserve executable permissions and the macOS bundle signature. Artifacts are retained for 7 days; CI does not publish releases.
+
+The workflow has read-only repository permissions, pins actions to verified commit SHAs, cancels superseded runs on the same ref, and caches Go/npm dependencies using both Go module checksums and the frontend lockfile. Workflow configuration: [ci.yml](.github/workflows/ci.yml).
+
 ## Build and validation
 
 Use the script for the operating system you are building on. Each full build regenerates Wails bindings, builds the frontend, compiles the MCP with **CGO enabled** for SQLite, builds the desktop application, and packages both together. Scripts locate the repository themselves and work when invoked from another directory.
